@@ -1,0 +1,55 @@
+<?xml version="1.0"?>
+<ruleset name="Woo Performance Toolkit">
+	<description>WordPress coding standards for Woo Performance Toolkit.</description>
+
+	<file>.</file>
+	<exclude-pattern>*/vendor/*</exclude-pattern>
+	<exclude-pattern>*/node_modules/*</exclude-pattern>
+	<exclude-pattern>*/tests/*</exclude-pattern>
+
+	<arg name="extensions" value="php"/>
+	<arg name="colors"/>
+	<arg value="sp"/>
+
+	<config name="testVersion" value="8.1-"/>
+	<config name="minimum_wp_version" value="6.4"/>
+
+	<rule ref="WordPress">
+		<!-- PSR-4 class files (src/, includes/) instead of class-*.php naming. -->
+		<exclude name="WordPress.Files.FileName.InvalidClassFileName"/>
+		<exclude name="WordPress.Files.FileName.NotHyphenatedLowercase"/>
+		<!-- camelCase methods are used in the WordPress-independent src/ classes. -->
+		<exclude name="WordPress.NamingConventions.ValidFunctionName.MethodNameInvalid"/>
+		<exclude name="WordPress.NamingConventions.ValidVariableName.VariableNotSnakeCase"/>
+		<exclude name="WordPress.NamingConventions.ValidVariableName.PropertyNotSnakeCase"/>
+		<exclude name="Universal.Operators.DisallowShortTernary"/>
+		<!-- Doc-block style is kept lightweight; types come from PHP type declarations. -->
+		<exclude name="Squiz.Commenting.FunctionComment"/>
+		<exclude name="Squiz.Commenting.ClassComment"/>
+		<exclude name="Squiz.Commenting.FunctionCommentThrowTag"/>
+		<exclude name="Generic.Commenting.DocComment.MissingShort"/>
+		<exclude name="WordPress.Arrays.ArrayDeclarationSpacing.AssociativeArrayFound"/>
+		<exclude name="Universal.NamingConventions.NoReservedKeywordParameterNames"/>
+		<!-- Exception messages are developer-facing and never printed unescaped. -->
+		<exclude name="WordPress.Security.EscapeOutput.ExceptionNotEscaped"/>
+	</rule>
+
+	<rule ref="WordPress.WP.I18n">
+		<properties>
+			<property name="text_domain" type="array">
+				<element value="woo-performance-toolkit"/>
+			</property>
+		</properties>
+	</rule>
+
+	<rule ref="WordPress.NamingConventions.PrefixAllGlobals">
+		<properties>
+			<property name="prefixes" type="array">
+				<element value="woo_performance_toolkit"/>
+				<element value="woo_perf"/>
+				<element value="WOO_PERF"/>
+				<element value="SaizulAmin"/>
+			</property>
+		</properties>
+	</rule>
+</ruleset>
