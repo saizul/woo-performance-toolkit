@@ -11,6 +11,7 @@ namespace SaizulAmin\WooPerformanceToolkit\Integration\Admin;
 
 use SaizulAmin\WooPerformanceToolkit\Cleanup\ResultSet;
 use SaizulAmin\WooPerformanceToolkit\Cleanup\Tasks;
+use SaizulAmin\WooPerformanceToolkit\Diagnostics\Export;
 use SaizulAmin\WooPerformanceToolkit\Diagnostics\Recommendation;
 use SaizulAmin\WooPerformanceToolkit\Diagnostics\Recommendations;
 use SaizulAmin\WooPerformanceToolkit\Diagnostics\Thresholds;
@@ -23,10 +24,11 @@ use SaizulAmin\WooPerformanceToolkit\Support\Bytes;
 
 final class SettingsPage {
 
-	public const SLUG       = 'woo-performance-toolkit';
-	public const GROUP      = 'woo_performance_toolkit';
-	public const CAPABILITY = 'manage_woocommerce';
-	public const ACTION_RUN = 'woo_perf_run_cleanup';
+	public const SLUG          = 'woo-performance-toolkit';
+	public const GROUP         = 'woo_performance_toolkit';
+	public const CAPABILITY    = 'manage_woocommerce';
+	public const ACTION_RUN    = 'woo_perf_run_cleanup';
+	public const ACTION_EXPORT = 'woo_perf_export_diagnostics';
 
 	/** @var array<string,mixed> */
 	private array $settings = array();
@@ -36,6 +38,7 @@ final class SettingsPage {
 		add_action( 'admin_init', array( $this, 'register_setting' ) );
 		add_filter( 'option_page_capability_' . self::GROUP, array( $this, 'capability' ) );
 		add_action( 'admin_post_' . self::ACTION_RUN, array( $this, 'handle_cleanup' ) );
+		add_action( 'admin_post_' . self::ACTION_EXPORT, array( $this, 'handle_export' ) );
 		add_filter( 'plugin_action_links_' . plugin_basename( WOO_PERF_FILE ), array( $this, 'action_links' ) );
 	}
 
@@ -282,6 +285,12 @@ final class SettingsPage {
 			__( 'Action Scheduler failed', 'woo-performance-toolkit' ) => null === $snapshot['as_failed'] ? __( 'n/a', 'woo-performance-toolkit' ) : number_format_i18n( (int) $snapshot['as_failed'] ),
 		);
 
+		echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" style="float:right">';
+		echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION_EXPORT ) . '" />';
+		wp_nonce_field( self::ACTION_EXPORT );
+		submit_button( __( 'Download diagnostics (JSON)', 'woo-performance-toolkit' ), 'secondary', 'submit', false );
+		echo '</form>';
+
 		echo '<h2>' . esc_html__( 'Recommendations', 'woo-performance-toolkit' ) . '</h2>';
 		foreach ( $recs as $rec ) {
 			printf(
@@ -403,6 +412,48 @@ final class SettingsPage {
 	}
 
 	/* ----------------------------------------------------------- Form handlers */
+
+	/**
+	 * Send the support export as a JSON download. Contains no URLs, users or option values.
+	 */
+	public function handle_export(): void {
+		global $wpdb, $wp_version;
+
+		if ( ! current_user_can( self::CAPABILITY ) ) {
+			wp_die( esc_html__( 'You do not have permission to do this.', 'woo-performance-toolkit' ), 403 );
+		}
+
+		check_admin_referer( self::ACTION_EXPORT );
+
+		$settings    = SettingsStore::get();
+		$environment = array(
+			'plugin_version'      => defined( 'WOO_PERF_VERSION' ) ? WOO_PERF_VERSION : '',
+			'wp_version'          => (string) $wp_version,
+			'wc_version'          => defined( 'WC_VERSION' ) ? (string) WC_VERSION : '',
+			'php_version'         => PHP_VERSION,
+			'db_version'          => (string) $wpdb->db_version(),
+			'memory_limit'        => (string) ini_get( 'memory_limit' ),
+			'multisite'           => is_multisite(),
+			'object_cache'        => (bool) wp_using_ext_object_cache(),
+			'active_plugin_count' => count( (array) get_option( 'active_plugins', array() ) ),
+		);
+
+		$report = Export::build(
+			( new Collector( $wpdb ) )->snapshot( $settings ),
+			$settings,
+			$environment,
+			gmdate( 'c' )
+		);
+
+		$host = (string) wp_parse_url( home_url(), PHP_URL_HOST );
+		nocache_headers();
+		header( 'Content-Type: application/json; charset=utf-8' );
+		header( 'X-Content-Type-Options: nosniff' );
+		header( 'Content-Disposition: attachment; filename="' . Export::fileName( $host, gmdate( 'Ymd' ) ) . '"' );
+
+		echo Export::toJson( $report ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- JSON download, not HTML.
+		exit;
+	}
 
 	public function handle_cleanup(): void {
 		global $wpdb;

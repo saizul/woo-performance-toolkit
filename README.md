@@ -23,6 +23,7 @@ conservative: only the heartbeat throttle is active after activation.
 | Heartbeat | Slow down or disable on admin and front end; the post editor always keeps a slow heartbeat | slow |
 | Cleanup | Expired WC sessions, expired transients, old Action Scheduler completed/failed actions and logs, orphaned order item meta; dry run, batching, daily/weekly schedule | schedule off |
 | Diagnostics | HPOS, object cache, autoloaded options size and largest options, Action Scheduler backlog, variation-count outliers, PHP version, with recommendations | always available |
+| Diagnostics export | "Download diagnostics (JSON)" on the Diagnostics tab: versions, settings, metrics and recommendations to attach to a support request. Contains no URLs, users, emails or option values | on demand |
 
 It declares compatibility with HPOS (custom order tables) and the Cart and
 Checkout blocks.

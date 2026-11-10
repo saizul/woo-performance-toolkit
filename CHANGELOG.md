@@ -4,6 +4,11 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- Diagnostics export: a "Download diagnostics (JSON)" button on the Diagnostics tab (requires `manage_woocommerce` and a nonce). The file holds versions, plugin settings, metrics and recommendations for support requests, and no URLs, users, emails or option values; free-text lists are reduced to entry counts.
+
 ## [1.0.0] - 2026-11-09
 
 ### Added
