@@ -37,7 +37,7 @@ Woo Performance Toolkit collects the most common WooCommerce performance fixes i
 
 **Diagnostics**
 
-* HPOS status, object cache, autoloaded options size and the largest autoloaded options, Action Scheduler backlog, products with a very high number of variations and PHP version, with prioritised recommendations.
+* HPOS status, object cache, autoloaded options size and the largest autoloaded options, Action Scheduler backlog, products with a very high number of variations and PHP version, with prioritised recommendations. A "Download diagnostics (JSON)" button exports the same data (no URLs, users or option values) to attach to a support request.
 
 **WP-CLI**
 
@@ -72,6 +72,9 @@ Yes. Use the dry run first. Only expired or orphaned rows and Action Scheduler r
 `woo_performance_toolkit_is_woocommerce_page`, `woo_performance_toolkit_keep_cart_fragments`, `woo_performance_toolkit_keep_handles`, `woo_performance_toolkit_disabled_admin_features` and `woo_performance_toolkit_variation_threshold`.
 
 == Changelog ==
+
+= Unreleased =
+* New: download diagnostics as JSON for support requests.
 
 = 1.0.0 =
 * Initial release.
