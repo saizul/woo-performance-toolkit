@@ -33,6 +33,7 @@ Woo Performance Toolkit collects the most common WooCommerce performance fixes i
 * Expired transients (and site transients).
 * Completed and failed Action Scheduler actions and logs older than a retention period.
 * Orphaned order item meta.
+* Opt-in: orphaned HPOS order meta, post meta, term meta and comment meta (rows whose parent no longer exists).
 * Dry-run counts in the admin and in WP-CLI, optional daily or weekly schedule, batched deletes.
 
 **Diagnostics**
@@ -44,6 +45,7 @@ Woo Performance Toolkit collects the most common WooCommerce performance fixes i
 * `wp woo-perf status`
 * `wp woo-perf cleanup --dry-run`
 * `wp woo-perf cleanup --task=sessions,transients --yes`
+* `wp woo-perf cleanup --task=orphan_post_meta --dry-run`
 
 The plugin declares compatibility with High-Performance Order Storage (custom order tables) and the Cart and Checkout blocks.
 
@@ -75,6 +77,7 @@ Yes. Use the dry run first. Only expired or orphaned rows and Action Scheduler r
 
 = Unreleased =
 * New: download diagnostics as JSON for support requests.
+* New: opt-in cleanup tasks for orphaned HPOS order meta, post meta, term meta and comment meta.
 
 = 1.0.0 =
 * Initial release.

@@ -6,7 +6,9 @@ namespace SaizulAmin\WooPerformanceToolkit\Tests\Cleanup;
 use InvalidArgumentException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use SaizulAmin\WooPerformanceToolkit\Cleanup\OrphanMeta;
 use SaizulAmin\WooPerformanceToolkit\Cleanup\SqlBuilder;
+use SaizulAmin\WooPerformanceToolkit\Cleanup\Tasks;
 use SaizulAmin\WooPerformanceToolkit\Support\Query;
 
 final class SqlBuilderTest extends TestCase {
@@ -17,7 +19,7 @@ final class SqlBuilderTest extends TestCase {
 	 * @return array<string,array{Query}>
 	 */
 	public static function allQueries(): array {
-		return array(
+		$queries = array(
 			'count sessions'      => array( SqlBuilder::countExpiredSessions( 'wp_woocommerce_sessions', 100 ) ),
 			'delete sessions'     => array( SqlBuilder::deleteExpiredSessions( 'wp_woocommerce_sessions', 100, 500 ) ),
 			'count transients'    => array( SqlBuilder::countExpiredTransients( 'wp_options', false, 100 ) ),
@@ -32,6 +34,14 @@ final class SqlBuilderTest extends TestCase {
 			'select orphans'      => array( SqlBuilder::selectOrphanItemMetaIds( 'm', 'i', 10 ) ),
 			'delete orphans'      => array( SqlBuilder::deleteOrphanItemMeta( 'm', array( 5 ) ) ),
 		);
+
+		foreach ( OrphanMeta::all() as $task => $spec ) {
+			$queries[ 'count ' . $task ]  = array( SqlBuilder::countOrphanMeta( $spec, 'meta', 'parent' ) );
+			$queries[ 'select ' . $task ] = array( SqlBuilder::selectOrphanMetaIds( $spec, 'meta', 'parent', 10 ) );
+			$queries[ 'delete ' . $task ] = array( SqlBuilder::deleteOrphanMeta( $spec, 'meta', 'parent', array( 3, 4 ) ) );
+		}
+
+		return $queries;
 	}
 
 	#[DataProvider( 'allQueries' )]
@@ -132,8 +142,57 @@ final class SqlBuilderTest extends TestCase {
 	public function test_orphan_query_joins_items_table(): void {
 		$q = SqlBuilder::countOrphanItemMeta( 'wp_woocommerce_order_itemmeta', 'wp_woocommerce_order_items' );
 
-		$this->assertStringContainsString( 'LEFT JOIN %i AS i', $q->sql );
-		$this->assertStringContainsString( 'i.order_item_id IS NULL', $q->sql );
-		$this->assertSame( array( 'wp_woocommerce_order_itemmeta', 'wp_woocommerce_order_items' ), $q->args );
+		$this->assertSame( 'SELECT COUNT(*) FROM %i AS m LEFT JOIN %i AS p ON p.%i = m.%i WHERE p.%i IS NULL', $q->sql );
+		$this->assertSame(
+			array( 'wp_woocommerce_order_itemmeta', 'wp_woocommerce_order_items', 'order_item_id', 'order_item_id', 'order_item_id' ),
+			$q->args
+		);
+	}
+
+	public function test_count_orphan_post_meta_binds_columns(): void {
+		$q = SqlBuilder::countOrphanMeta( OrphanMeta::forTask( Tasks::ORPHAN_POST_META ), 'wp_postmeta', 'wp_posts' );
+
+		$this->assertSame( array( 'wp_postmeta', 'wp_posts', 'ID', 'post_id', 'ID' ), $q->args );
+	}
+
+	public function test_select_orphan_meta_ids_orders_by_meta_id_and_limits(): void {
+		$spec = OrphanMeta::forTask( Tasks::ORPHAN_COMMENT_META );
+		$q    = SqlBuilder::selectOrphanMetaIds( $spec, 'wp_commentmeta', 'wp_comments', 250 );
+
+		$this->assertSame(
+			'SELECT m.%i FROM %i AS m LEFT JOIN %i AS p ON p.%i = m.%i WHERE p.%i IS NULL ORDER BY m.%i ASC LIMIT %d',
+			$q->sql
+		);
+		$this->assertSame(
+			array( 'meta_id', 'wp_commentmeta', 'wp_comments', 'comment_ID', 'comment_id', 'comment_ID', 'meta_id', 250 ),
+			$q->args
+		);
+	}
+
+	public function test_select_orphan_meta_ids_limit_is_at_least_one(): void {
+		$q = SqlBuilder::selectOrphanMetaIds( OrphanMeta::forTask( Tasks::ORPHAN_TERM_META ), 'm', 'p', -5 );
+		$this->assertSame( 1, array_slice( $q->args, -1 )[0] );
+	}
+
+	public function test_hpos_order_meta_uses_id_columns(): void {
+		$q = SqlBuilder::selectOrphanMetaIds( OrphanMeta::forTask( Tasks::ORPHAN_ORDER_META ), 'wp_wc_orders_meta', 'wp_wc_orders', 10 );
+
+		$this->assertSame( array( 'id', 'wp_wc_orders_meta', 'wp_wc_orders', 'id', 'order_id', 'id', 'id', 10 ), $q->args );
+	}
+
+	public function test_delete_orphan_meta_rechecks_parent_and_sanitises_ids(): void {
+		$spec = OrphanMeta::forTask( Tasks::ORPHAN_POST_META );
+		$q    = SqlBuilder::deleteOrphanMeta( $spec, 'wp_postmeta', 'wp_posts', array( '7', 7, 0, -1, 'x', 12 ) );
+
+		$this->assertSame(
+			'DELETE m FROM %i AS m LEFT JOIN %i AS p ON p.%i = m.%i WHERE p.%i IS NULL AND m.%i IN (%d,%d)',
+			$q->sql
+		);
+		$this->assertSame( array( 'wp_postmeta', 'wp_posts', 'ID', 'post_id', 'ID', 'meta_id', 7, 12 ), $q->args );
+	}
+
+	public function test_delete_orphan_meta_requires_ids(): void {
+		$this->expectException( InvalidArgumentException::class );
+		SqlBuilder::deleteOrphanMeta( OrphanMeta::forTask( Tasks::ORPHAN_POST_META ), 'm', 'p', array( 0 ) );
 	}
 }

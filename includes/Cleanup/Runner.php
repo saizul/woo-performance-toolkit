@@ -12,6 +12,7 @@ declare(strict_types=1);
 
 namespace SaizulAmin\WooPerformanceToolkit\Integration\Cleanup;
 
+use SaizulAmin\WooPerformanceToolkit\Cleanup\OrphanMeta;
 use SaizulAmin\WooPerformanceToolkit\Cleanup\ResultSet;
 use SaizulAmin\WooPerformanceToolkit\Cleanup\Retention;
 use SaizulAmin\WooPerformanceToolkit\Cleanup\SqlBuilder;
@@ -36,12 +37,20 @@ final class Runner {
 		$prefix = $this->wpdb->prefix;
 
 		return array(
-			'sessions'    => $prefix . 'woocommerce_sessions',
-			'options'     => $this->wpdb->options,
-			'as_actions'  => $prefix . 'actionscheduler_actions',
-			'as_logs'     => $prefix . 'actionscheduler_logs',
-			'order_items' => $prefix . 'woocommerce_order_items',
-			'order_meta'  => $prefix . 'woocommerce_order_itemmeta',
+			'sessions'         => $prefix . 'woocommerce_sessions',
+			'options'          => $this->wpdb->options,
+			'as_actions'       => $prefix . 'actionscheduler_actions',
+			'as_logs'          => $prefix . 'actionscheduler_logs',
+			'order_items'      => $prefix . 'woocommerce_order_items',
+			'order_meta'       => $prefix . 'woocommerce_order_itemmeta',
+			'hpos_orders'      => $prefix . 'wc_orders',
+			'hpos_orders_meta' => $prefix . 'wc_orders_meta',
+			'posts'            => $this->wpdb->posts,
+			'postmeta'         => $this->wpdb->postmeta,
+			'terms'            => $this->wpdb->terms,
+			'termmeta'         => $this->wpdb->termmeta,
+			'comments'         => $this->wpdb->comments,
+			'commentmeta'      => $this->wpdb->commentmeta,
 		);
 	}
 
@@ -124,14 +133,14 @@ final class Runner {
 				return $this->table_exists( $t['as_actions'] )
 					? $this->var( SqlBuilder::countFinishedActions( $t['as_actions'], $this->cutoff( $settings ) ) )
 					: 0;
-
-			case Tasks::ORPHAN_ITEM_META:
-				return ( $this->table_exists( $t['order_meta'] ) && $this->table_exists( $t['order_items'] ) )
-					? $this->var( SqlBuilder::countOrphanItemMeta( $t['order_meta'], $t['order_items'] ) )
-					: 0;
 		}
 
-		return 0;
+		$spec = OrphanMeta::forTask( $task );
+		if ( null === $spec || ! $this->orphan_tables_exist( $spec ) ) {
+			return 0;
+		}
+
+		return $this->var( SqlBuilder::countOrphanMeta( $spec, $t[ $spec->meta_table ], $t[ $spec->parent_table ] ) );
 	}
 
 	/**
@@ -164,19 +173,41 @@ final class Runner {
 					$this->exec( SqlBuilder::deleteActions( $t['as_actions'], $chunk ) );
 				}
 				return count( $ids );
-
-			case Tasks::ORPHAN_ITEM_META:
-				if ( ! $this->table_exists( $t['order_meta'] ) || ! $this->table_exists( $t['order_items'] ) ) {
-					return 0;
-				}
-				$ids = $this->col( SqlBuilder::selectOrphanItemMetaIds( $t['order_meta'], $t['order_items'], $limit ) );
-				foreach ( array_chunk( $ids, 500 ) as $chunk ) {
-					$this->exec( SqlBuilder::deleteOrphanItemMeta( $t['order_meta'], $chunk ) );
-				}
-				return count( $ids );
 		}
 
-		return 0;
+		$spec = OrphanMeta::forTask( $task );
+		if ( null === $spec || ! $this->orphan_tables_exist( $spec ) ) {
+			return 0;
+		}
+
+		return $this->orphan_batch( $spec, $limit );
+	}
+
+	/**
+	 * Both tables of an orphaned-meta task exist (e.g. HPOS tables are absent
+	 * on stores that never enabled custom order tables).
+	 */
+	private function orphan_tables_exist( OrphanMeta $spec ): bool {
+		$t = $this->tables();
+
+		return $this->table_exists( $t[ $spec->meta_table ] ) && $this->table_exists( $t[ $spec->parent_table ] );
+	}
+
+	/**
+	 * Delete one batch of orphaned meta rows; returns the rows deleted.
+	 */
+	private function orphan_batch( OrphanMeta $spec, int $limit ): int {
+		$t      = $this->tables();
+		$meta   = $t[ $spec->meta_table ];
+		$parent = $t[ $spec->parent_table ];
+		$ids    = $this->col( SqlBuilder::selectOrphanMetaIds( $spec, $meta, $parent, $limit ) );
+		$total  = 0;
+
+		foreach ( array_chunk( $ids, 500 ) as $chunk ) {
+			$total += $this->exec( SqlBuilder::deleteOrphanMeta( $spec, $meta, $parent, $chunk ) );
+		}
+
+		return $total;
 	}
 
 	private function transient_batch( bool $site, int $limit ): int {

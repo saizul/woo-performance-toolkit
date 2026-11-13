@@ -201,6 +201,10 @@ final class SettingsPage {
 		$this->row_checkbox( 'cleanup_task_transients', __( 'Task: expired transients', 'woo-performance-toolkit' ), '' );
 		$this->row_checkbox( 'cleanup_task_action_scheduler', __( 'Task: Action Scheduler completed/failed actions', 'woo-performance-toolkit' ), '' );
 		$this->row_checkbox( 'cleanup_task_orphan_item_meta', __( 'Task: orphaned order item meta', 'woo-performance-toolkit' ), '' );
+		$this->row_checkbox( 'cleanup_task_orphan_order_meta', __( 'Task: orphaned HPOS order meta', 'woo-performance-toolkit' ), __( 'Rows in wc_orders_meta whose order no longer exists. Skipped when the HPOS tables are absent.', 'woo-performance-toolkit' ) );
+		$this->row_checkbox( 'cleanup_task_orphan_post_meta', __( 'Task: orphaned post meta', 'woo-performance-toolkit' ), __( 'Rows in postmeta whose post (product, order, page, etc.) no longer exists. Off by default; check the dry run first.', 'woo-performance-toolkit' ) );
+		$this->row_checkbox( 'cleanup_task_orphan_term_meta', __( 'Task: orphaned term meta', 'woo-performance-toolkit' ), '' );
+		$this->row_checkbox( 'cleanup_task_orphan_comment_meta', __( 'Task: orphaned comment meta', 'woo-performance-toolkit' ), __( 'Includes meta left behind by deleted product reviews and order notes.', 'woo-performance-toolkit' ) );
 		$this->row_number( 'cleanup_retention_days', __( 'Action Scheduler retention (days)', 'woo-performance-toolkit' ), 1, 3650 );
 		$this->row_number( 'cleanup_batch_size', __( 'Batch size (rows per query)', 'woo-performance-toolkit' ), 100, 10000 );
 		echo '</table>';

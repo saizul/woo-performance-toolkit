@@ -24,7 +24,7 @@ final class Command {
 
 	/**
 	 * Remove expired sessions, expired transients, old Action Scheduler records
-	 * and orphaned order item meta.
+	 * and orphaned meta (order item, HPOS order, post, term and comment meta).
 	 *
 	 * ## OPTIONS
 	 *
@@ -32,7 +32,8 @@ final class Command {
 	 * : Only count the rows that would be removed.
 	 *
 	 * [--task=<tasks>]
-	 * : Comma-separated tasks: sessions, transients, action_scheduler, orphan_item_meta.
+	 * : Comma-separated tasks: sessions, transients, action_scheduler, orphan_item_meta,
+	 * orphan_order_meta, orphan_post_meta, orphan_term_meta, orphan_comment_meta.
 	 * Defaults to the tasks enabled in the plugin settings.
 	 *
 	 * [--yes]
@@ -42,6 +43,7 @@ final class Command {
 	 *
 	 *     wp woo-perf cleanup --dry-run
 	 *     wp woo-perf cleanup --task=sessions,transients --yes
+	 *     wp woo-perf cleanup --task=orphan_post_meta --dry-run
 	 *
 	 * @param string[]             $args       Positional arguments.
 	 * @param array<string,string> $assoc_args Associative arguments.

@@ -8,6 +8,10 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 - Diagnostics export: a "Download diagnostics (JSON)" button on the Diagnostics tab (requires `manage_woocommerce` and a nonce). The file holds versions, plugin settings, metrics and recommendations for support requests, and no URLs, users, emails or option values; free-text lists are reduced to entry counts.
+- Cleanup tasks for orphaned meta: `orphan_order_meta` (HPOS `wc_orders_meta`), `orphan_post_meta`, `orphan_term_meta` and `orphan_comment_meta`. Off by default (opt-in on the Settings tab or via `wp woo-perf cleanup --task=...`), with dry-run counts, batching, and a skip when the HPOS tables are absent.
+
+### Changed
+- Orphaned order item meta now uses the same generic orphan-meta SQL builder, and its batch `DELETE` re-checks that the parent row is still missing before removing a row.
 
 ## [1.0.0] - 2026-11-09
 
