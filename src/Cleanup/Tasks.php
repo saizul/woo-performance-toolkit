@@ -18,6 +18,11 @@ final class Tasks {
 	public const ACTION_SCHEDULER = 'action_scheduler';
 	public const ORPHAN_ITEM_META = 'orphan_item_meta';
 
+	public const ORPHAN_ORDER_META   = 'orphan_order_meta';
+	public const ORPHAN_POST_META    = 'orphan_post_meta';
+	public const ORPHAN_TERM_META    = 'orphan_term_meta';
+	public const ORPHAN_COMMENT_META = 'orphan_comment_meta';
+
 	/**
 	 * @return string[]
 	 */
@@ -27,6 +32,10 @@ final class Tasks {
 			self::TRANSIENTS,
 			self::ACTION_SCHEDULER,
 			self::ORPHAN_ITEM_META,
+			self::ORPHAN_ORDER_META,
+			self::ORPHAN_POST_META,
+			self::ORPHAN_TERM_META,
+			self::ORPHAN_COMMENT_META,
 		);
 	}
 
@@ -37,10 +46,14 @@ final class Tasks {
 	 */
 	public static function labels(): array {
 		return array(
-			self::SESSIONS         => 'Expired WooCommerce sessions',
-			self::TRANSIENTS       => 'Expired transients',
-			self::ACTION_SCHEDULER => 'Old Action Scheduler completed/failed actions and logs',
-			self::ORPHAN_ITEM_META => 'Orphaned order item meta',
+			self::SESSIONS            => 'Expired WooCommerce sessions',
+			self::TRANSIENTS          => 'Expired transients',
+			self::ACTION_SCHEDULER    => 'Old Action Scheduler completed/failed actions and logs',
+			self::ORPHAN_ITEM_META    => 'Orphaned order item meta',
+			self::ORPHAN_ORDER_META   => 'Orphaned HPOS order meta',
+			self::ORPHAN_POST_META    => 'Orphaned post meta',
+			self::ORPHAN_TERM_META    => 'Orphaned term meta',
+			self::ORPHAN_COMMENT_META => 'Orphaned comment meta',
 		);
 	}
 

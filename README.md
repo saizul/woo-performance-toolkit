@@ -21,7 +21,7 @@ conservative: only the heartbeat throttle is active after activation.
 | Marketing hub | Removes the WooCommerce Admin `marketing` feature and Marketplace suggestions through documented filters | off |
 | WooCommerce Admin | Optional full disable via `woocommerce_admin_disabled` (advanced) | off |
 | Heartbeat | Slow down or disable on admin and front end; the post editor always keeps a slow heartbeat | slow |
-| Cleanup | Expired WC sessions, expired transients, old Action Scheduler completed/failed actions and logs, orphaned order item meta; dry run, batching, daily/weekly schedule | schedule off |
+| Cleanup | Expired WC sessions, expired transients, old Action Scheduler completed/failed actions and logs, orphaned order item meta; opt-in orphaned HPOS order meta, post meta, term meta and comment meta; dry run, batching, daily/weekly schedule | schedule off |
 | Diagnostics | HPOS, object cache, autoloaded options size and largest options, Action Scheduler backlog, variation-count outliers, PHP version, with recommendations | always available |
 | Diagnostics export | "Download diagnostics (JSON)" on the Diagnostics tab: versions, settings, metrics and recommendations to attach to a support request. Contains no URLs, users, emails or option values | on demand |
 
@@ -48,7 +48,21 @@ wp woo-perf cleanup --yes             # run the tasks enabled in settings
 wp woo-perf cleanup --task=sessions,transients --yes
 ```
 
-Tasks: `sessions`, `transients`, `action_scheduler`, `orphan_item_meta`.
+Tasks: `sessions`, `transients`, `action_scheduler`, `orphan_item_meta`,
+`orphan_order_meta`, `orphan_post_meta`, `orphan_term_meta`, `orphan_comment_meta`.
+
+| Orphan task | Rows removed | Default |
+| --- | --- | --- |
+| `orphan_item_meta` | `woocommerce_order_itemmeta` rows whose order item is gone | on |
+| `orphan_order_meta` | `wc_orders_meta` (HPOS) rows whose order is gone; skipped when the HPOS tables do not exist | off |
+| `orphan_post_meta` | `postmeta` rows whose post (product, variation, legacy order, page...) is gone | off |
+| `orphan_term_meta` | `termmeta` rows whose term is gone | off |
+| `orphan_comment_meta` | `commentmeta` rows whose comment (review, order note...) is gone | off |
+
+The four new orphan tasks are off by default so an existing cleanup schedule
+does not start touching core WordPress tables after an update. Preview them with
+`wp woo-perf cleanup --task=orphan_post_meta --dry-run`, then enable them on the
+Settings tab or run them with `--task`.
 
 ## Hooks
 
@@ -70,8 +84,11 @@ add_filter( 'woo_performance_toolkit_keep_cart_fragments', function ( $keep, $po
 ## How cleanup stays safe
 
 - Counts are shown first (admin Cleanup tab and `--dry-run`).
-- Only expired sessions, expired transients, orphaned item meta and Action
+- Only expired sessions, expired transients, orphaned meta rows (meta whose
+  parent order item, order, post, term or comment no longer exists) and Action
   Scheduler `complete`/`failed` rows older than the retention period are touched.
+- Orphaned meta deletes repeat the parent check inside the `DELETE`, so a row
+  whose parent reappears between the batch `SELECT` and the `DELETE` is kept.
 - Deletes run in batches (`LIMIT`), never one giant query.
 - All SQL is built by tested classes using `%i`/`%s`/`%d` placeholders and run
   through `$wpdb->prepare()`.

@@ -27,24 +27,30 @@ final class Options {
 	 */
 	public static function defaults(): array {
 		return array(
-			'cart_fragments_disable'        => false,
-			'cart_fragments_allowlist'      => '',
-			'assets_dequeue'                => false,
-			'assets_keep_handles'           => '',
-			'marketing_disable'             => false,
-			'wc_admin_disable'              => false,
-			'heartbeat_admin_mode'          => self::MODE_SLOW,
-			'heartbeat_admin_interval'      => 60,
-			'heartbeat_frontend_mode'       => self::MODE_SLOW,
-			'heartbeat_frontend_interval'   => 120,
-			'cleanup_enabled'               => false,
-			'cleanup_frequency'             => self::FREQ_DAILY,
-			'cleanup_task_sessions'         => true,
-			'cleanup_task_transients'       => true,
-			'cleanup_task_action_scheduler' => true,
-			'cleanup_task_orphan_item_meta' => true,
-			'cleanup_retention_days'        => 30,
-			'cleanup_batch_size'            => 1000,
+			'cart_fragments_disable'           => false,
+			'cart_fragments_allowlist'         => '',
+			'assets_dequeue'                   => false,
+			'assets_keep_handles'              => '',
+			'marketing_disable'                => false,
+			'wc_admin_disable'                 => false,
+			'heartbeat_admin_mode'             => self::MODE_SLOW,
+			'heartbeat_admin_interval'         => 60,
+			'heartbeat_frontend_mode'          => self::MODE_SLOW,
+			'heartbeat_frontend_interval'      => 120,
+			'cleanup_enabled'                  => false,
+			'cleanup_frequency'                => self::FREQ_DAILY,
+			'cleanup_task_sessions'            => true,
+			'cleanup_task_transients'          => true,
+			'cleanup_task_action_scheduler'    => true,
+			'cleanup_task_orphan_item_meta'    => true,
+			// Opt-in: these touch core WordPress tables, so existing schedules
+			// keep their behaviour until the site owner enables them.
+			'cleanup_task_orphan_order_meta'   => false,
+			'cleanup_task_orphan_post_meta'    => false,
+			'cleanup_task_orphan_term_meta'    => false,
+			'cleanup_task_orphan_comment_meta' => false,
+			'cleanup_retention_days'           => 30,
+			'cleanup_batch_size'               => 1000,
 		);
 	}
 
@@ -64,6 +70,10 @@ final class Options {
 			'cleanup_task_transients',
 			'cleanup_task_action_scheduler',
 			'cleanup_task_orphan_item_meta',
+			'cleanup_task_orphan_order_meta',
+			'cleanup_task_orphan_post_meta',
+			'cleanup_task_orphan_term_meta',
+			'cleanup_task_orphan_comment_meta',
 		);
 	}
 

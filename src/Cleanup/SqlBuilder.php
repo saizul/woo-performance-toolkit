@@ -109,17 +109,11 @@ final class SqlBuilder {
 	/* ------------------------------------------------------ Orphaned item meta */
 
 	public static function countOrphanItemMeta( string $metaTable, string $itemsTable ): Query {
-		return new Query(
-			'SELECT COUNT(*) FROM %i AS m LEFT JOIN %i AS i ON i.order_item_id = m.order_item_id WHERE i.order_item_id IS NULL',
-			array( $metaTable, $itemsTable )
-		);
+		return self::countOrphanMeta( self::itemMetaSpec(), $metaTable, $itemsTable );
 	}
 
 	public static function selectOrphanItemMetaIds( string $metaTable, string $itemsTable, int $limit ): Query {
-		return new Query(
-			'SELECT m.meta_id FROM %i AS m LEFT JOIN %i AS i ON i.order_item_id = m.order_item_id WHERE i.order_item_id IS NULL ORDER BY m.meta_id ASC LIMIT %d',
-			array( $metaTable, $itemsTable, self::positive( $limit ) )
-		);
+		return self::selectOrphanMetaIds( self::itemMetaSpec(), $metaTable, $itemsTable, $limit );
 	}
 
 	/**
@@ -127,6 +121,57 @@ final class SqlBuilder {
 	 */
 	public static function deleteOrphanItemMeta( string $metaTable, array $metaIds ): Query {
 		return self::deleteByIds( $metaTable, 'meta_id', $metaIds );
+	}
+
+	/* ----------------------------------------------------- Orphaned meta (any) */
+
+	/**
+	 * Count meta rows whose parent row does not exist.
+	 */
+	public static function countOrphanMeta( OrphanMeta $spec, string $metaTable, string $parentTable ): Query {
+		return new Query(
+			'SELECT COUNT(*) FROM %i AS m LEFT JOIN %i AS p ON p.%i = m.%i WHERE p.%i IS NULL',
+			array( $metaTable, $parentTable, $spec->parent_key, $spec->foreign_key, $spec->parent_key )
+		);
+	}
+
+	/**
+	 * Lowest-first batch of orphaned meta IDs.
+	 */
+	public static function selectOrphanMetaIds( OrphanMeta $spec, string $metaTable, string $parentTable, int $limit ): Query {
+		return new Query(
+			'SELECT m.%i FROM %i AS m LEFT JOIN %i AS p ON p.%i = m.%i WHERE p.%i IS NULL ORDER BY m.%i ASC LIMIT %d',
+			array(
+				$spec->meta_id_column,
+				$metaTable,
+				$parentTable,
+				$spec->parent_key,
+				$spec->foreign_key,
+				$spec->parent_key,
+				$spec->meta_id_column,
+				self::positive( $limit ),
+			)
+		);
+	}
+
+	/**
+	 * Delete the given meta IDs, re-checking that each is still orphaned.
+	 *
+	 * The join is repeated in the DELETE so a row whose parent was (re)created
+	 * between the SELECT and the DELETE is left alone.
+	 *
+	 * @param int[] $metaIds Meta IDs; non-positive values are discarded.
+	 */
+	public static function deleteOrphanMeta( OrphanMeta $spec, string $metaTable, string $parentTable, array $metaIds ): Query {
+		$ids = self::positiveIds( $metaIds );
+
+		return new Query(
+			'DELETE m FROM %i AS m LEFT JOIN %i AS p ON p.%i = m.%i WHERE p.%i IS NULL AND m.%i IN (' . implode( ',', array_fill( 0, count( $ids ), '%d' ) ) . ')',
+			array_merge(
+				array( $metaTable, $parentTable, $spec->parent_key, $spec->foreign_key, $spec->parent_key, $spec->meta_id_column ),
+				$ids
+			)
+		);
 	}
 
 	/* ----------------------------------------------------------------- Helpers */
@@ -137,6 +182,22 @@ final class SqlBuilder {
 	 * @param int[] $ids IDs; non-positive values are discarded.
 	 */
 	public static function deleteByIds( string $table, string $column, array $ids ): Query {
+		$ids = self::positiveIds( $ids );
+
+		return new Query(
+			'DELETE FROM %i WHERE %i IN (' . implode( ',', array_fill( 0, count( $ids ), '%d' ) ) . ')',
+			array_merge( array( $table, $column ), $ids )
+		);
+	}
+
+	/**
+	 * Unique positive integer IDs, in input order.
+	 *
+	 * @param array<int,mixed> $ids Raw IDs.
+	 * @return int[]
+	 * @throws InvalidArgumentException When no positive ID remains.
+	 */
+	private static function positiveIds( array $ids ): array {
 		$ids = array_values(
 			array_unique(
 				array_filter(
@@ -150,10 +211,11 @@ final class SqlBuilder {
 			throw new InvalidArgumentException( 'At least one positive ID is required.' );
 		}
 
-		return new Query(
-			'DELETE FROM %i WHERE %i IN (' . implode( ',', array_fill( 0, count( $ids ), '%d' ) ) . ')',
-			array_merge( array( $table, $column ), $ids )
-		);
+		return $ids;
+	}
+
+	private static function itemMetaSpec(): OrphanMeta {
+		return OrphanMeta::all()[ Tasks::ORPHAN_ITEM_META ];
 	}
 
 	private static function positive( int $limit ): int {
